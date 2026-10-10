@@ -12,6 +12,8 @@ export const sensorLabels = {
 };
 // Light và Light System cùng chỉ đèn nhưng xuất hiện ở các bộ dữ liệu mẫu khác nhau.
 export const deviceLabels = {
+  'Fan System': 'Quạt',
+  'Air Condition System': 'Điều hòa',
   Fan: 'Quạt',
   AC: 'Điều hòa',
   Light: 'Đèn',
@@ -20,6 +22,10 @@ export const deviceLabels = {
 // Nhãn kết quả hiển thị trong bảng lịch sử; màu và icon do History.jsx/history.css quyết định.
 // Ví dụ row.status="Success" được hiện thành Thành công; giá trị dùng trong select vẫn là Success.
 export const statusLabels = {
+  SUCCESS: 'Thành công',
+  ERROR: 'Thất bại',
+  PENDING: 'Đang xử lý',
+  TIMEOUT: 'Hết thời gian chờ',
   Success: 'Thành công',
   Failed: 'Thất bại',
   Pending: 'Đang xử lý',

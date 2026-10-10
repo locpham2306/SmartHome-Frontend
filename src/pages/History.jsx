@@ -1,22 +1,12 @@
-// FILE NÀY TẠO MÀN "LỊCH SỬ".
-// Phần trên return chọn các dòng cần hiện; phần trong return vẽ ô lọc, bảng và nút trang.
-// Khác màn Dữ liệu: chọn bộ lọc hoặc gõ thời gian là bảng đổi ngay, không cần bấm Tìm kiếm.
-//
-// Các bước khi mở màn:
-// 1. Đọc historyRows cố định; mỗi dòng có id, time, user, device, action, status.
-// 2. Ô thời gian và ba dropdown cập nhật state ngay, không có bước bấm Tìm kiếm.
-// 3. Lọc theo tất cả điều kiện cùng lúc → sắp xếp thời gian giảm dần → cắt trang.
-// 4. Vẽ sáu cột; các badge biểu thị thao tác và kết quả độc lập (Bật vẫn có thể Thất bại).
-// 5. Pagination nhận tổng sau lọc để hiển thị đúng số trang. Dữ liệu hiện chưa lấy từ server.
 import { deviceLabels, statusLabels } from '../constants/labels';
-import React, { useState } from 'react';
-import { historyRows } from '../data/mockData';
+import React, { useEffect, useState } from 'react';
+import useHistorySearch from '../hooks/useHistorySearch';
 import Pagination from '../components/Pagination';
 import Icon from '../components/Icon';
 import ScrollableTable from '../components/ScrollableTable';
 import FilterSelect from '../components/FilterSelect';
 
-// Màn lịch sử đọc dữ liệu mẫu cố định; không tự thêm bản ghi khi bật/tắt ở Tổng quan.
+// Lấy lịch sử đã lưu từ BE; đổi bộ lọc sẽ tải lại danh sách.
 export default function History() {
   // useState là cách React nhớ giá trị đang chọn.
   // Ví dụ [device, setDevice]: đọc device để biết đang lọc thiết bị nào; gọi setDevice để đổi thiết bị.
@@ -27,35 +17,27 @@ export default function History() {
   const [device, setDevice] = useState('all');
   // Thao tác đang lọc: ON hoặc OFF; all cho phép cả hai.
   const [action, setAction] = useState('all');
-  // Trạng thái đang lọc: Success, Failed hoặc Pending; all không giới hạn.
+  // Trạng thái BE: SUCCESS, ERROR, PENDING hoặc TIMEOUT; all không giới hạn.
   const [status, setStatus] = useState('all');
   // Số dòng/trang, mặc định 20; độc lập với tổng số bản ghi sau lọc.
   const [size, setSize] = useState(20);
   // Trang đang xem bắt đầu từ 1; đổi bất kỳ bộ lọc nào cũng reset về 1.
   const [page, setPage] = useState(1);
 
-  // Tạo các mục trong ô chọn thiết bị từ dữ liệu có sẵn.
-  const devices = [...new Set(historyRows.map((row) => row.device))];
-  // Chấp nhận thời gian có chữ T kiểu ISO hoặc dấu cách như nội dung đang hiển thị.
-  const timeQuery = query
-    .trim()
-    // Chỉ thay t/T nằm giữa hai chữ số, giữ lại chữ số đầu nhờ nhóm $1.
-    .replace(/(\d)t(?=\d)/gi, '$1 ')
-    .toLowerCase();
-  // rows là danh sách tìm được, chưa chia trang. filter kiểm tra lần lượt từng bản ghi row.
-  const rows = historyRows
-    .filter(
-      (row) =>
-        // Nếu chọn Tất cả (all) HOẶC thiết bị của dòng đúng với thiết bị đang chọn thì qua điều kiện này.
-        (device === 'all' || row.device === device) &&
-        (action === 'all' || row.action === action) &&
-        (status === 'all' || row.status === status) &&
-        // kiểm tra chuỗi đó có chứa nội dung tìm không.
-        row.time.replace('T', ' ').toLowerCase().includes(timeQuery),
-    )
-    .sort((a, b) => b.time.localeCompare(a.time) || b.id - a.id);
-  // Bảng chỉ hiện một phần của rows. Phần đang được xem gọi là visibleRows.
-  const visibleRows = rows.slice((page - 1) * size, page * size);
+  const devices = ['Fan System', 'Air Condition System', 'Light System'];
+  const { rows, total, totalPages, loading, error, retry } = useHistorySearch({
+    page,
+    size,
+    time: query,
+    device,
+    action,
+    status,
+  });
+  useEffect(() => {
+    if (!loading && !error && page > Math.max(1, totalPages)) {
+      setPage(Math.max(1, totalPages));
+    }
+  }, [loading, error, page, totalPages]);
 
   return (
     <div className="history-page">
@@ -69,6 +51,7 @@ export default function History() {
             aria-label="Tìm theo thời gian"
             placeholder="Tìm theo thời gian..."
             value={query}
+            maxLength={100}
             onChange={(event) => {
               // Lấy chữ vừa gõ vào ô thời gian. query đổi → tính lại rows → bảng đổi ngay.
               setQuery(event.target.value);
@@ -112,9 +95,10 @@ export default function History() {
           value={status}
           options={[
             { value: 'all', label: 'Tất cả trạng thái' },
-            { value: 'Success', label: 'Thành công' },
-            { value: 'Failed', label: 'Thất bại' },
-            { value: 'Pending', label: statusLabels.Pending },
+            { value: 'SUCCESS', label: statusLabels.SUCCESS },
+            { value: 'ERROR', label: statusLabels.ERROR },
+            { value: 'PENDING', label: statusLabels.PENDING },
+            { value: 'TIMEOUT', label: statusLabels.TIMEOUT },
           ]}
           onChange={(value) => {
             setStatus(value);
@@ -125,6 +109,7 @@ export default function History() {
       <section
         className="panel sensor-table-panel history-table-panel"
         aria-label="Lịch sử thiết bị"
+        aria-busy={loading}
       >
         {/* tạo bảng 6 cột */}
         <ScrollableTable
@@ -152,24 +137,35 @@ export default function History() {
           <tbody tabIndex={0} aria-label="Các bản ghi lịch sử">
             {/* Badge thao tác và kết quả có màu riêng; nhãn tiếng Việt lấy từ constants/labels. */}
             {/* tạo nội dung bằng map */}
-            {visibleRows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.id}>
                 {/* key={row.id} nhận diện dòng trong React; fw-semibold làm mã hơi đậm, text-nowrap giữ thời gian trên một dòng. */}
                 <td className="fw-semibold">{row.id}</td>
-                <td className="text-nowrap">{row.time.replace('T', ' ')}</td>
+                <td className="text-nowrap">
+                  {row.time?.replace('T', ' ') || '—'}
+                </td>
                 {/* Nếu user rỗng/null/undefined thì dùng Chưa xác định; CSS cho phép tên dài ngắt dòng. */}
                 <td className="history-operator">
-                  {row.user || 'Chưa xác định'}
+                  {row.operator || 'Chưa xác định'}
                 </td>
                 <td>
-                  <span className="history-device" data-device={row.device}>
+                  <span
+                    className="history-device"
+                    data-device={
+                      row.device === 'Fan System'
+                        ? 'Fan'
+                        : row.device === 'Air Condition System'
+                          ? 'AC'
+                          : row.device
+                    }
+                  >
                     <span className="history-device-icon">
                       {/* Chọn hình quạt cho Fan, điều hòa cho AC; các mã còn lại ở dữ liệu mẫu dùng hình đèn. */}
                       <Icon
                         name={
-                          row.device === 'Fan'
+                          row.device === 'Fan System'
                             ? 'fan'
-                            : row.device === 'AC'
+                            : row.device === 'Air Condition System'
                               ? 'ac'
                               : 'light'
                         }
@@ -196,10 +192,26 @@ export default function History() {
                     className={
                       // Đang xử lý dùng nền vàng và icon lịch sử.
                       'status-badge ' +
-                      (row.status === 'Success' ? 'success' : row.status === 'Pending' ? 'pending' : 'failed')
+                      (row.status === 'SUCCESS'
+                        ? 'success'
+                        : row.status === 'PENDING'
+                          ? 'pending'
+                          : row.status === 'TIMEOUT'
+                            ? 'timeout'
+                            : 'failed')
                     }
                   >
-                    <Icon name={row.status === 'Success' ? 'check' : row.status === 'Pending' ? 'history' : 'close'} />
+                    <Icon
+                      name={
+                        row.status === 'SUCCESS'
+                          ? 'check'
+                          : row.status === 'PENDING'
+                            ? 'history'
+                            : row.status === 'TIMEOUT'
+                              ? 'history'
+                              : 'close'
+                      }
+                    />
                     {statusLabels[row.status] || row.status}
                   </span>
                 </td>
@@ -209,25 +221,40 @@ export default function History() {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={6} className="text-center text-secondary py-5">
-                  Không có hoạt động phù hợp.
+                  <div role="status">
+                    {loading
+                      ? 'Đang tải lịch sử…'
+                      : error || 'Không có hoạt động phù hợp.'}
+                  </div>
+                  {error && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm mt-2"
+                      onClick={retry}
+                    >
+                      Thử lại
+                    </button>
+                  )}
                 </td>
               </tr>
             )}
           </tbody>
         </ScrollableTable>
-        {/* Phân trang dựa trên toàn bộ rows đã lọc, không dùng độ dài visibleRows. */}
-        <Pagination
-          page={page}
-          size={size}
-          total={rows.length}
-          // Chọn số trang chỉ thay page; toàn bộ bộ lọc đang chọn vẫn giữ nguyên.
-          onChange={setPage}
-          onSizeChange={(value) => {
-            // Đổi số dòng rồi quay về trang đầu, tránh giữ page lớn hơn số trang mới.
-            setSize(value);
-            setPage(1);
-          }}
-        />
+        {/* Tổng bản ghi và phân trang do backend trả về. */}
+        {!loading && !error && (
+          <Pagination
+            page={page}
+            size={size}
+            total={total}
+            // Chọn số trang chỉ thay page; toàn bộ bộ lọc đang chọn vẫn giữ nguyên.
+            onChange={setPage}
+            onSizeChange={(value) => {
+              // Đổi số dòng rồi quay về trang đầu, tránh giữ page lớn hơn số trang mới.
+              setSize(value);
+              setPage(1);
+            }}
+          />
+        )}
       </section>
     </div>
   );
