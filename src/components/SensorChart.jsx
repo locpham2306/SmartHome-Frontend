@@ -192,22 +192,6 @@ export default function SensorChart({ lightOnly = false }) {
               fill={'url(#fill-' + id + ')'}
             />
             <path d={path} fill="none" stroke={color} strokeWidth="2.5" />
-            {points.map(([x, y], i) => (
-              <circle
-                key={i}
-                cx={x}
-                cy={y}
-                r="3"
-                fill="white"
-                stroke={color}
-                strokeWidth="2.2"
-              >
-                <title>
-                  {values[i]}
-                  {lightOnly ? ' lux' : id === 'humidity' ? '%' : '°C'}
-                </title>
-              </circle>
-            ))}
           </g>
         );
       })}

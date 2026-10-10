@@ -30,14 +30,14 @@ const resources = [
     description: 'Mã nguồn và các tệp của dự án',
     tag: 'Mã nguồn',
     icon: 'branch',
-    href: '',
+    href: 'https://github.com/locpham2306/SmartHome-Frontend',
   },
   {
     title: 'Thiết kế Figma',
     description: 'Bố cục giao diện và thành phần thiết kế',
     tag: 'Thiết kế',
     icon: 'design',
-    href: '',
+    href: 'https://www.figma.com/design/sQtVe7GxLOiEtEIxx1nESq/Untitled?node-id=0-1&p=f&t=cs7f2hkSmGOtrkeT-0',
   },
 ];
 

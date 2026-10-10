@@ -27,7 +27,7 @@ export default function History() {
   const [device, setDevice] = useState('all');
   // Thao tác đang lọc: ON hoặc OFF; all cho phép cả hai.
   const [action, setAction] = useState('all');
-  // Kết quả đang lọc: Success hoặc Failed; all không giới hạn kết quả.
+  // Trạng thái đang lọc: Success, Failed hoặc Pending; all không giới hạn.
   const [status, setStatus] = useState('all');
   // Số dòng/trang, mặc định 20; độc lập với tổng số bản ghi sau lọc.
   const [size, setSize] = useState(20);
@@ -114,6 +114,7 @@ export default function History() {
             { value: 'all', label: 'Tất cả trạng thái' },
             { value: 'Success', label: 'Thành công' },
             { value: 'Failed', label: 'Thất bại' },
+            { value: 'Pending', label: statusLabels.Pending },
           ]}
           onChange={(value) => {
             setStatus(value);
@@ -193,12 +194,12 @@ export default function History() {
                 <td>
                   <span
                     className={
-                      // Thành công: nền xanh lá/icon dấu tích; thất bại: nền hồng/icon dấu x.
+                      // Đang xử lý dùng nền vàng và icon lịch sử.
                       'status-badge ' +
-                      (row.status === 'Success' ? 'success' : 'failed')
+                      (row.status === 'Success' ? 'success' : row.status === 'Pending' ? 'pending' : 'failed')
                     }
                   >
-                    <Icon name={row.status === 'Success' ? 'check' : 'close'} />
+                    <Icon name={row.status === 'Success' ? 'check' : row.status === 'Pending' ? 'history' : 'close'} />
                     {statusLabels[row.status] || row.status}
                   </span>
                 </td>

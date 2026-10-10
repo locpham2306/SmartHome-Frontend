@@ -2,6 +2,7 @@ import { deviceLabels } from '../constants/labels';
 import React, { useEffect, useRef, useState } from 'react';
 import Icon from '../components/Icon';
 import SensorChart from '../components/SensorChart';
+import SensorStats from '../components/SensorStats';
 
 export default function Dashboard() {
   const [devices, setDevices] = useState({
@@ -54,91 +55,9 @@ export default function Dashboard() {
       // Đóng hàm hẹn giờ: 500 ở dưới là 500 mili giây = 0,5 giây.
     }, 500);
   };
-  // Số liệu mẫu của ba thẻ, độc lập với dữ liệu đường biểu đồ; max quy định độ dài thanh gradient.
-  // Mỗi cấu hình gồm title/reading/unit để hiển thị; icon/tone quyết định hình và màu;
-  // max là mẫu số của thanh mức; trend/down chọn dòng chênh lệch và hướng mũi tên.
-  // Số đo, trend đang cố định trong mã, chưa tính từ cảm biến hay lịch sử thực.
-  const stats = [
-    {
-      title: 'Nhiệt độ',
-      reading: 31.7,
-      unit: '°C',
-      max: 50,
-      icon: 'temperature',
-      trend: '+0.5°C',
-      tone: 'red',
-    },
-    {
-      title: 'Độ ẩm',
-      reading: 71.3,
-      unit: '%',
-      max: 100,
-      icon: 'humidity',
-      trend: '-2.1%',
-      tone: 'blue',
-      down: true,
-    },
-    {
-      title: 'Cường độ ánh sáng',
-      reading: 525,
-      unit: ' lux',
-      max: 1000,
-      icon: 'sun',
-      trend: '+12%',
-      tone: 'yellow',
-    },
-  ];
   return (
     <section className="dashboard-panel" aria-label="Tổng quan nhà thông minh">
-      {/* Duyệt cấu hình để tạo ba thẻ; thanh meter giới hạn độ rộng trong khoảng 0–100%. */}
-      <div className="dashboard-stats">
-        {/*biến dữ liệu thành 3 ô */}
-        {stats.map((stat) => (
-          // đi qua từng phần tử, mỗi ptu thành 1 ô
-          <article className="stat-card" key={stat.title}>
-            {/*icon*/}
-            <div className={'stat-icon ' + stat.tone}>
-              <Icon name={stat.icon} />
-            </div>
-            {/*Phần chữ*/}
-            <div className="stat-content">
-              <h2>{stat.title}</h2>
-              <strong>
-                {stat.reading}
-                {stat.unit}
-              </strong>
-              {/* down=true thêm mũi tên; nội dung trend vẫn lấy từ cấu hình. */}
-              <div className={'stat-trend ' + stat.tone}>
-                {/*mũi tên*/}
-                <Icon name="arrow" className={stat.down ? 'arrow-down' : ''} />
-                <b>{stat.trend}</b>
-                <span>so với giờ trước</span>
-              </div>
-            </div>
-            {/*Thanh màu dưới*/}
-            <div className={'stat-scale ' + stat.tone}>
-              {/* role=meter mô tả thanh đo cho trợ năng. aria-valuenow là số đo thật; width của thanh mới bị chặn 0–100%.
-                  Ví dụ nhiệt độ 31.7/max50 → thanh dài 63.4% */}
-              <div
-                className="stat-scale-track"
-                role="meter"
-                aria-label={stat.title}
-                aria-valuemin={0}
-                aria-valuemax={stat.max}
-                aria-valuenow={stat.reading}
-                aria-valuetext={`${stat.reading}${stat.unit}`}
-              > {/*cách tính Thanh màu dưới*/}
-                <span
-                  className="stat-scale-fill"
-                  style={{
-                    width: `${Math.min(100, Math.max(0, (stat.reading / stat.max) * 100))}%`,
-                  }}
-                />
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+      <SensorStats />
       {/* Hai biểu đồ dùng chung SensorChart; lightOnly chọn thang đo lux thay vì nhiệt độ/độ ẩm. */}
       <div className="dashboard-body">
         {/* biểu đồ nhiệt độ độ ẩm */}
@@ -186,9 +105,11 @@ export default function Dashboard() {
               className="device-toggle-all"
               disabled={isDevicePending}
               aria-busy={isDevicePending}
+              // *bật tắt tất cả
               onClick={toggleAllDevices}
             >
               <Icon name="power" />
+
               {isDevicePending
                 ? 'Đang xử lý…'
                 : allDevicesOn
@@ -232,6 +153,7 @@ export default function Dashboard() {
                 <span className="device-name">
                   {deviceLabels[name]}
                   {/* Chữ “Đang xử lý…” chỉ hiện khi thiết bị đang chờ */}
+                  {/*hiển thị chữ đang xử lí*/}
                   <span className="device-pending" role="status">
                     {pendingDevices[name] ? 'Đang xử lý…' : ''}
                   </span>

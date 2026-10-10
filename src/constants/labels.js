@@ -19,4 +19,8 @@ export const deviceLabels = {
 };
 // Nhãn kết quả hiển thị trong bảng lịch sử; màu và icon do History.jsx/history.css quyết định.
 // Ví dụ row.status="Success" được hiện thành Thành công; giá trị dùng trong select vẫn là Success.
-export const statusLabels = { Success: 'Thành công', Failed: 'Thất bại' };
+export const statusLabels = {
+  Success: 'Thành công',
+  Failed: 'Thất bại',
+  Pending: 'Đang xử lý',
+};

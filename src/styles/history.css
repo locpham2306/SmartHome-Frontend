@@ -100,6 +100,12 @@ Khung bảng, cách cuộn và phân trang nằm trong common.css. */
   color: #d12f50;
   background: #ffe3eb;
 }
+.status-badge.pending {
+  background: #fff6de;
+}
+.status-badge.pending .ui-icon {
+  color: #b88500;
+}
 /* Điều chỉnh tại (max-width: 1199px): đổi số cột hoặc thu gọn kích thước/khoảng cách cho vùng nội dung này. */
 @media (max-width: 1199px) {
   .history-toolbar {

@@ -56,10 +56,32 @@ const originalSensorRows = [
     unit: '%',
   },
 ];
-// Lịch sử mẫu có cả thao tác bật/tắt và kết quả thành công/thất bại, không phản ánh công tắc hiện tại.
-// Cấu trúc history row: id/time xác định thứ tự; user là người điều khiển; device là mã thiết bị;
-// action nhận ON/OFF; status nhận Success/Failed. Trạng thái Failed không có nghĩa thiết bị đang tắt.
+
 const originalHistoryRows = [
+  {
+    id: 300,
+    time: '2026-09-17T08:45:00',
+    user: 'Pham Bao Loc',
+    device: 'Fan',
+    action: 'ON',
+    status: 'Pending',
+  },
+  {
+    id: 299,
+    time: '2026-09-17T08:44:00',
+    user: 'Admin',
+    device: 'AC',
+    action: 'OFF',
+    status: 'Pending',
+  },
+  {
+    id: 298,
+    time: '2026-09-17T08:43:00',
+    user: 'Pham Bao Loc',
+    device: 'Light System',
+    action: 'ON',
+    status: 'Pending',
+  },
   {
     id: 297,
     time: '2026-09-17T08:30:00',
@@ -156,7 +178,7 @@ export const sensorRows = [
 
 const devices = ['Fan', 'AC', 'Light System'];
 
-// Ghép 7 dòng gốc với 113 dòng sinh thêm = 120 dòng; luân phiên người dùng, thiết bị, thao tác và có mẫu thất bại.
+// Ghép 10 dòng gốc với 113 dòng sinh thêm = 123 dòng, gồm cả trạng thái Pending để thử bộ lọc Đang xử lý.
 export const historyRows = [
   ...originalHistoryRows,
   ...Array.from({ length: 113 }, (_, index) => ({
