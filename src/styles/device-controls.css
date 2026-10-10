@@ -1,0 +1,27 @@
+.device-control-item {
+  min-width: 0;
+}
+.device-connection,
+.device-result {
+  font-size: 12px;
+}
+.device-connection:empty {
+  display: none;
+}
+.device-connection {
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.device-connection button {
+  background: none;
+  border: none;
+  color: #2877ff;
+  text-decoration: underline;
+}
+.device-result {
+  margin: 6px 2px 0;
+  color: #087f5b;
+}
+.device-result.is-error {
+  color: #b42318;
+}

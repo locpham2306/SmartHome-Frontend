@@ -71,12 +71,25 @@ Proxy này dùng cho môi trường phát triển. Khi triển khai bản build,
 cần chuyển tiếp `/api` và `/ws` tới backend, hỗ trợ WebSocket upgrade.
 
 Hai bảng có 120 bản ghi mẫu mỗi bảng, cố định giữa các lần tải trang.
-Các công tắc chỉ cập nhật trạng thái React, giữ trạng thái khi chuyển trang
-nhưng mất khi tải lại; chưa điều khiển phần cứng hay ghi thêm lịch sử.
+Điều khiển thiết bị lấy danh sách và trạng thái từ `GET /api/devices`, gửi
+`POST /api/devices/{id}/control?action=ON|OFF`, rồi nhận kết quả từ
+`/topic/devices`. Nút chờ khi lệnh đang xử lý; trạng thái bật/tắt chỉ đổi theo
+kết quả backend xác nhận. ERROR/TIMEOUT hiển thị thông báo riêng.
+“Bật/Tắt tất cả” gửi từng lệnh cho các thiết bị cần thay đổi, theo dõi kết quả
+riêng từng thiết bị (không phải một giao dịch bật/tắt đồng thời).
 
-`SensorChart.jsx` tính tọa độ từ các mảng trong `data/dashboard.js`, sau đó
-vẽ đường, điểm, trục và vùng tô bằng SVG. Không sử dụng ảnh biểu đồ.
-Các mảng biểu đồ vẫn là dữ liệu mẫu; chưa nối luồng cảm biến thực tế.
+Luồng thiết bị dùng kết nối STOMP riêng và khóa thao tác khi mất kết nối.
+Khi mở trang hoặc kết nối lại, FE đọc thêm lệnh gần nhất của từng thiết bị từ
+`/api/action-history`. Khi có lệnh đang chờ, FE đối chiếu lại mỗi 5 giây để
+khôi phục kết quả nếu bỏ lỡ WebSocket; không tự gửi lại lệnh điều khiển.
+
+Biểu đồ tải `GET /api/sensors/chart?type=Temperature|Humidity|Light&limit=100`
+cho từng cảm biến (backend mặc định lấy lịch sử 1 giờ gần nhất), rồi cập nhật
+từ cùng kết nối `/topic/sensors` với ba thẻ số đo. Mỗi cảm biến giữ tối đa 100
+điểm, sắp xếp theo thời gian thực và loại điểm trùng thời gian. Sau khi kết nối
+lại, biểu đồ tải lại lịch sử và giữ các điểm realtime mới đến trong lúc tải.
+`SensorChart.jsx` vẽ SVG với thang đo tự điều chỉnh, hỗ trợ rê chuột hoặc phím
+mũi tên xem số đo. Danh sách rỗng và lỗi tải có thông báo riêng.
 
 `utils/sensorSearch.js` tạo `pageRequest` và `searchRequest`, hiện áp dụng
 trên dữ liệu mẫu trong `data/mockData.js`. Đây là phần có thể nối với API sau này.

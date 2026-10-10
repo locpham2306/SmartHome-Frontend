@@ -1,6 +1,5 @@
 import React from 'react';
 import Icon from './Icon';
-import useSensorReadings from '../hooks/useSensorReadings';
 import '../styles/sensor-stats.css';
 
 const sensors = [
@@ -38,9 +37,13 @@ const alertLabels = {
   UNKNOWN: 'Chưa có đánh giá',
 };
 
-export default function SensorStats() {
-  const { readings, loading, error, connection, retry } = useSensorReadings();
-
+export default function SensorStats({
+  readings,
+  loading,
+  error,
+  connection,
+  retry,
+}) {
   return (
     <div
       className="dashboard-stats"

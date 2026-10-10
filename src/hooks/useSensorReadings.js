@@ -1,20 +1,81 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Client } from '@stomp/stompjs';
-import { getLatestSensors } from '../services/sensors';
+import { getLatestSensors, getSensorChart } from '../services/sensors';
 import { isSensorSnapshot, mergeSensorReadings } from '../utils/sensorReadings';
+import {
+  emptyChart,
+  appendChartSnapshot,
+  isChartPoint,
+  mergeChartPoints,
+} from '../utils/sensorChart';
 
 export default function useSensorReadings() {
   const [readings, setReadings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [connection, setConnection] = useState('connecting');
+  const [chart, setChart] = useState(emptyChart);
+  const [chartLoading, setChartLoading] = useState(true);
+  const [chartErrors, setChartErrors] = useState({});
   const refreshRef = useRef(null);
+  const chartRefreshRef = useRef(null);
   const retry = useCallback(() => refreshRef.current?.(), []);
+  const retryChart = useCallback(() => chartRefreshRef.current?.(), []);
 
   useEffect(() => {
     let disposed = false;
     let requestController;
+    let chartController;
     let liveRevision = 0;
+
+    const refreshChart = async () => {
+      chartController?.abort();
+      const controller = new AbortController();
+      chartController = controller;
+      setChartLoading(true);
+      const timer = window.setTimeout(() => controller.abort(), 10000);
+      const types = {
+        temperature: 'Temperature',
+        humidity: 'Humidity',
+        light: 'Light',
+      };
+      try {
+        await Promise.all(
+          Object.entries(types).map(async ([key, type]) => {
+            try {
+              const points = await getSensorChart(type, controller.signal);
+              if (!Array.isArray(points) || !points.every(isChartPoint)) {
+                throw new Error('Dữ liệu biểu đồ không hợp lệ.');
+              }
+              if (
+                disposed ||
+                chartController !== controller ||
+                controller.signal.aborted
+              )
+                return;
+              // Realtime có thể đến trong lúc REST đang tải: giữ các điểm mới đó.
+              setChart((previous) => ({
+                ...previous,
+                [key]: mergeChartPoints(points, previous[key]),
+              }));
+              setChartErrors((previous) => ({ ...previous, [key]: '' }));
+            } catch (failure) {
+              if (disposed || chartController !== controller) return;
+              setChartErrors((previous) => ({
+                ...previous,
+                [key]:
+                  failure.name === 'AbortError'
+                    ? 'Tải biểu đồ quá lâu. Vui lòng thử lại.'
+                    : failure.message,
+              }));
+            }
+          }),
+        );
+      } finally {
+        window.clearTimeout(timer);
+        if (!disposed && chartController === controller) setChartLoading(false);
+      }
+    };
 
     const acceptSnapshot = (snapshot) => {
       if (!isSensorSnapshot(snapshot)) {
@@ -60,6 +121,7 @@ export default function useSensorReadings() {
     };
 
     refreshRef.current = refresh;
+    chartRefreshRef.current = refreshChart;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const client = new Client({
       brokerURL: `${protocol}//${window.location.host}/ws`,
@@ -77,6 +139,7 @@ export default function useSensorReadings() {
             if (body?.success !== true)
               throw new Error('Không nhận được dữ liệu cảm biến hợp lệ.');
             acceptSnapshot(body.data);
+            setChart((previous) => appendChartSnapshot(previous, body.data));
             liveRevision += 1;
           } catch (failure) {
             setError(failure.message);
@@ -84,6 +147,7 @@ export default function useSensorReadings() {
         });
         // Tải lại sau mỗi lần kết nối để bù số đo bị lỡ khi mất mạng.
         void refresh();
+        void refreshChart();
       },
       onWebSocketClose: () => {
         if (!disposed) setConnection('reconnecting');
@@ -103,14 +167,27 @@ export default function useSensorReadings() {
     });
 
     void refresh();
+    void refreshChart();
     client.activate();
     return () => {
       disposed = true;
       refreshRef.current = null;
+      chartRefreshRef.current = null;
       requestController?.abort();
+      chartController?.abort();
       void client.deactivate();
     };
   }, []);
 
-  return { readings, loading, error, connection, retry };
+  return {
+    readings,
+    loading,
+    error,
+    connection,
+    retry,
+    chart,
+    chartLoading,
+    chartErrors,
+    retryChart,
+  };
 }
