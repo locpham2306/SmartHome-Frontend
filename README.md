@@ -70,7 +70,11 @@ Ba thẻ cảm biến trên Tổng quan đã nối backend:
 Proxy này dùng cho môi trường phát triển. Khi triển khai bản build, máy chủ
 cần chuyển tiếp `/api` và `/ws` tới backend, hỗ trợ WebSocket upgrade.
 
-Hai bảng có 120 bản ghi mẫu mỗi bảng, cố định giữa các lần tải trang.
+Trang Dữ liệu cảm biến tải `GET /api/sensors` với `pageRequest.*` và
+`searchRequest.*`. Tìm kiếm, lọc ngày và phân trang được thực hiện tại backend;
+không chọn ngày thì bỏ hai tham số ngày. Nhấn Tìm kiếm/Enter để tải kết quả,
+kể cả khi giữ nguyên điều kiện; Xóa đặt lại bộ lọc. Có trạng thái đang tải,
+lỗi kèm nút thử lại và thông báo danh sách rỗng. Trang Lịch sử vẫn dùng dữ liệu mẫu.
 Điều khiển thiết bị lấy danh sách và trạng thái từ `GET /api/devices`, gửi
 `POST /api/devices/{id}/control?action=ON|OFF`, rồi nhận kết quả từ
 `/topic/devices`. Nút chờ khi lệnh đang xử lý; trạng thái bật/tắt chỉ đổi theo
@@ -91,7 +95,7 @@ lại, biểu đồ tải lại lịch sử và giữ các điểm realtime mớ
 `SensorChart.jsx` vẽ SVG với thang đo tự điều chỉnh, hỗ trợ rê chuột hoặc phím
 mũi tên xem số đo. Danh sách rỗng và lỗi tải có thông báo riêng.
 
-`utils/sensorSearch.js` tạo `pageRequest` và `searchRequest`, hiện áp dụng
-trên dữ liệu mẫu trong `data/mockData.js`. Đây là phần có thể nối với API sau này.
+`utils/sensorSearch.js` tạo điều kiện tìm kiếm cho trang Dữ liệu cảm biến;
+`useSensorSearch` tải trang từ API và hủy request cũ khi đổi điều kiện.
 
 # SmartHome-Frontend

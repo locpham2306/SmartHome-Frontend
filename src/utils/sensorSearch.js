@@ -17,7 +17,7 @@ function normalizeSensorName(name) {
     .replace(/đ/g, 'd');
 }
 
-// Tạo tham số tìm kiếm/phân trang tách khỏi giao diện; hiện dùng dữ liệu mẫu, có thể nối API sau.
+// Tạo tham số tìm kiếm/phân trang gửi lên API.
 export function buildSensorSearchParams({
   page = 1,
   size = 20,

@@ -114,7 +114,7 @@ export default function App() {
           {page === 'data' && (
             <span className="sensor-online">
               <i />
-              Dữ liệu mẫu
+              Dữ liệu đã lưu
             </span>
           )}
         </header>

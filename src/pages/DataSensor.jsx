@@ -1,17 +1,8 @@
-// Khi sử dụng màn này:
-// 1. Hiện dữ liệu mẫu với 20 dòng/trang.
-// 2. Người dùng sửa dropdown/ô nhập: mới thay đổi bản nháp field/query.
-// 3. Nhấn Tìm kiếm hoặc Enter: chép bản nháp sang search và về trang 1.
-// 4. React chạy lại hàm này khi dữ liệu lưu trong useState đổi: tìm các dòng phù hợp rồi đưa vào bảng.
-// 5. Chọn trang hoặc số dòng: tính lại kết quả từ search đã xác nhận, không lấy nội dung đang gõ.
-// Các import: labels dịch mã sang tên Việt; useState lưu trạng thái; mockData là dữ liệu cục bộ;
-// utils thực hiện tìm kiếm/định dạng; ba component cuối dựng footer, icon và bảng cuộn.
 import { sensorLabels } from '../constants/labels';
-import React, { useRef, useState } from 'react';
-import { sensorRows } from '../data/mockData';
+import React, { useEffect, useRef, useState } from 'react';
+import useSensorSearch from '../hooks/useSensorSearch';
 import {
   buildSensorSearchParams,
-  searchSensorRows,
   formatSensorValue,
   formatSensorTime,
 } from '../utils/sensorSearch';
@@ -53,7 +44,12 @@ export default function DataSensor() {
 
   function applyDateRange(event) {
     event.preventDefault();
-    if (!draftDates.startDate || !draftDates.endDate || draftDates.startDate > draftDates.endDate) return;
+    if (
+      !draftDates.startDate ||
+      !draftDates.endDate ||
+      draftDates.startDate > draftDates.endDate
+    )
+      return;
     setDateRange({ ...draftDates });
     setPage(1);
     dateDialog.current.close();
@@ -76,15 +72,26 @@ export default function DataSensor() {
 
   // rows chỉ gồm các bản ghi của trang hiện tại; total đếm tất cả kết quả phù hợp.
   // Ví dụ có 47 kết quả, size=20, page=2: rows có 20 phần tử nhưng total vẫn là 47.
-  const { rows, total } = searchSensorRows(sensorRows, params);
+  const { rows, total, totalPages, loading, error, retry } =
+    useSensorSearch(params);
+  useEffect(() => {
+    if (!loading && !error && page > Math.max(1, totalPages)) {
+      setPage(Math.max(1, totalPages));
+    }
+  }, [loading, error, page, totalPages]);
+  const today = new Date();
+  const calendarDate =
+    rows[0]?.time?.slice(0, 10) ||
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   // Hàm này chạy khi bấm "Tìm kiếm" hoặc nhấn Enter trong ô nhập.
   function submitSearch(event) {
     // Không cho form điều hướng/tải lại trang vì việc lọc diễn ra ngay trong React.
     event.preventDefault();
     // Chép lựa chọn/ô nhập vào search. { field, query } viết gọn của { field: field, query: query }.
-    // search đổi làm React chạy lại hàm DataSensor và tính lại các dòng trong bảng.
+    // Bộ lọc đã xác nhận được gửi lên API; gõ thêm chưa thay đổi bảng.
     setSearch({ field, query });
+    retry();
     // Kết quả mới có thể ít trang hơn; không giữ trang cũ vì có thể nằm ngoài danh sách.
     setPage(1);
   }
@@ -95,6 +102,7 @@ export default function DataSensor() {
     setField('all');
     setQuery('');
     setSearch({ field: 'all', query: '' });
+    retry();
     setPage(1);
   }
 
@@ -140,6 +148,7 @@ export default function DataSensor() {
             aria-label="Nội dung tìm kiếm"
             placeholder="Nhập nội dung tìm kiếm..."
             value={query}
+            maxLength={100}
             onChange={(event) => setQuery(event.target.value)}
           />
         </div>
@@ -147,7 +156,9 @@ export default function DataSensor() {
         {/* nút chọn ngày */}
         <div className="sensor-toolbar-actions">
           <button
-            className={'sensor-calendar-button' + (hasDateRange ? ' is-active' : '')}
+            className={
+              'sensor-calendar-button' + (hasDateRange ? ' is-active' : '')
+            }
             type="button"
             aria-label="Chọn khoảng ngày"
             aria-haspopup="dialog"
@@ -160,7 +171,10 @@ export default function DataSensor() {
           >
             <Icon name="calendar" />
           </button>
-          <button className="btn btn-primary sensor-search-submit" type="submit">
+          <button
+            className="btn btn-primary sensor-search-submit"
+            type="submit"
+          >
             <Icon name="search" />
             Tìm kiếm
           </button>
@@ -176,25 +190,56 @@ export default function DataSensor() {
           Xóa
         </button>
       </form>
-      <dialog ref={dateDialog} className="sensor-date-dialog" aria-labelledby="sensor-date-title">
+      <dialog
+        ref={dateDialog}
+        className="sensor-date-dialog"
+        aria-labelledby="sensor-date-title"
+      >
         <form onSubmit={applyDateRange}>
           <div className="sensor-date-heading">
             <h2 id="sensor-date-title">Chọn khoảng ngày</h2>
-            <button type="button" className="sensor-calendar-button" aria-label="Đóng" onClick={() => dateDialog.current.close()}>
+            <button
+              type="button"
+              className="sensor-calendar-button"
+              aria-label="Đóng"
+              onClick={() => dateDialog.current.close()}
+            >
               <Icon name="close" />
             </button>
           </div>
           <p>Hiển thị dữ liệu trong cả ngày bắt đầu và ngày kết thúc.</p>
-          <DateRangeCalendar key={calendarVersion} value={draftDates} onChange={setDraftDates} initialDate={sensorRows[0].time.slice(0, 10)} />
+          <DateRangeCalendar
+            key={calendarVersion}
+            value={draftDates}
+            onChange={setDraftDates}
+            initialDate={calendarDate}
+          />
           <div className="sensor-date-actions">
-            <button type="button" className="btn btn-outline-secondary" onClick={() => dateDialog.current.close()}>Hủy</button>
-            <button type="submit" className="btn btn-primary" disabled={!draftDates.startDate || !draftDates.endDate}>Áp dụng</button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() => dateDialog.current.close()}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={
+                !draftDates.startDate ||
+                !draftDates.endDate ||
+                draftDates.startDate > draftDates.endDate
+              }
+            >
+              Áp dụng
+            </button>
           </div>
         </form>
       </dialog>
       <section
         className="panel sensor-table-panel"
         aria-label="Dữ liệu đo cảm biến"
+        aria-busy={loading}
       >
         {/* Tỉ lệ bốn cột tính theo phần trăm; component dùng cùng colgroup cho đầu bảng và thân bảng. */}
         {/* tạo bảng có đầu mục đứng yên */}
@@ -248,7 +293,20 @@ export default function DataSensor() {
             {!rows.length && (
               <tr>
                 <td colSpan={4} className="text-center py-5">
-                  Không có dữ liệu phù hợp.
+                  <div role="status">
+                    {loading
+                      ? 'Đang tải dữ liệu…'
+                      : error || 'Không có dữ liệu phù hợp.'}
+                  </div>
+                  {error && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary btn-sm mt-2"
+                      onClick={retry}
+                    >
+                      Thử lại
+                    </button>
+                  )}
                 </td>
               </tr>
             )}
@@ -256,18 +314,20 @@ export default function DataSensor() {
         </ScrollableTable>
         {/* Footer nằm ngoài vùng cuộn; total là tổng kết quả sau lọc, không phải số dòng đang hiển thị. */}
         {/* báo lại khi người dùng chuyển trang*/}
-        <Pagination
-          page={page}
-          size={size}
-          total={total}
-          // Pagination gọi onChange(sốTrang); setter khiến màn tính lại rows rồi render.
-          onChange={setPage}
-          onSizeChange={(value) => {
-            // value đã được Pagination đổi từ string của select thành số.
-            setSize(value);
-            setPage(1);
-          }}
-        />
+        {!loading && !error && (
+          <Pagination
+            page={page}
+            size={size}
+            total={total}
+            // Đổi trang gửi request mới với bộ lọc đã áp dụng.
+            onChange={setPage}
+            onSizeChange={(value) => {
+              // value đã được Pagination đổi từ string của select thành số.
+              setSize(value);
+              setPage(1);
+            }}
+          />
+        )}
       </section>
     </div>
   );
